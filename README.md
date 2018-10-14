@@ -10,6 +10,10 @@
 
 [react-dom.development.js](./node_modules/react-dom/cjs/react-dom.development.js)
 
+为调试：
+
+把`node_modules`下的`react`和`react-dom`中的`index.js`执行文件都改为`*.development.js`
+
 
 ### 代码结构
 

@@ -23,6 +23,14 @@
 2. Render：负责渲染vdom到终端
 3. Reconciler：映射数据到UI
 
+### 核心概念
+
+1. 当调用`ReactDOM.render()`或是`setState()`时，会走`reconsiliation`过程，其结果就是React获悉了DOM节点树，然后`react-dom`应用在`“一套最少的变化”`来更新DOM节点。
+
+2. reconciliation
+
+见[这里](./terminology/reconciliation.md)
+
 
 ### 帮助阅读源码的tips
 

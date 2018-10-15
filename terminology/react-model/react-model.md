@@ -1,6 +1,9 @@
 [原文](https://github.com/reactjs/react-basic)
 
 ### React-基本原理模型
+
+麻的，真的不好理解啊！！！
+
 ---
 #### 转化(Transformation)
 
@@ -36,5 +39,19 @@ UI被抽象为可用的部件，不对外显示其内部的实现细节。比如
 
 由于众多list的存在就会出现很多相似的boilerplate，将boilerplate抽象出来。
 
-到[这里](https://github.com/reactjs/react-basic#state-map)
+#### 状态索引(State Map)
+
+将抽取和传递状态的逻辑移到我们经常使用的低阶函数中。
+
+#### 缓存索引(Memoization Map)
+
+一旦我们想在一个记住一个列表中的多条项目，缓存就会越来越难。就需要使用一些复杂的缓存算法在那些经常使用的缓存之间进行平衡。
+
+幸运的是，在相同位置，UI相当稳定。树中相同位置每次都会得到相同的值。结果就是这棵树是一个相当有用的缓存策略。
+
+使用和处理State时一样的技巧，通过一个组合函数传入记忆缓存。
+
+#### 代数效应(Algebraic Effects)
+
+context
 

@@ -127,15 +127,104 @@ UserList(data.users, likesPerUser, updateUserLikes);
 
 function FancyUserList(users) {
   return FancyBox(
-    UserList.bind(null, users)//....................还能这样用？
+    UserList.bind(null, users)//....................还能这样用？好像可以诶，真·托么神奇
   );
 }
 
 const box = FancyUserList(data.users);
-const resolvedChildren = box.children(likesPerUser, updateUserLikes);//...................还能这样用？
+const resolvedChildren = box.children(likesPerUser, updateUserLikes);//...................还能这样用？真·托么神奇
 const resolvedBox = {
   ...box,
   children: resolvedChildren
 };
 
 
+// State Map
+
+function FancyBoxWithState(
+  children,
+  stateMap,
+  updateState
+) {
+  return FancyBox(
+    children.map(child => child.continuation(
+      stateMap.get(child.key),
+      updateState
+    ))
+  );
+}
+
+function UserList(users) {
+  return users.map(user => {
+    return ({
+      continuation: FancyNameBox.bind(null, user),
+      key: user.id
+    });
+  });
+}
+
+function FancyUserList(users) {
+  return FancyBoxWithState.bind(null, UserList(users));
+}
+
+const continuation = FancyUserList(data.users);
+continuation(likesPerUser, updateUserLikes);
+
+// Memoization Map
+
+function memoize(fn) {
+  return function(arg, memoizationCache) {
+    if (memoizationCache.arg === arg) {
+      return memoizationCache.result;
+    }
+    const result = fn(arg);
+    memoizationCache.arg = arg;
+    memoizationCache.result = result;
+    return result;
+  };
+}
+
+function FancyBoxWithState(
+  children,
+  stateMap,
+  updateState,
+  memoizationCache
+) {
+  return FancyBox(
+    children.map(child => child.continuation(
+      stateMap.get(child.key),
+      updateState,
+      memoizationCache.get(child.key)
+    ))
+  );
+}
+
+const MemoizedFancyNameBox = memoize(FancyNameBox);
+
+// Algebraic Effects
+// 看不懂啊！！！
+
+function ThemeBorderColorRequest() { }
+
+function FancyBox(children) {
+  const color = raise new ThemeBorderColorRequest();
+  return {
+    borderWidth: '1px',
+    borderColor: color,
+    children: children
+  };
+}
+
+function BlueTheme(children) {
+  return try {
+    children();
+  } catch effect ThemeBorderColorRequest -> [, continuation] {
+    continuation('blue');
+  }
+}
+
+function App(data) {
+  return BlueTheme(
+    FancyUserList.bind(null, data.users)
+  );
+}

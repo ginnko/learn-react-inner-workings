@@ -5,7 +5,7 @@
 ### 说明
 
 为快速定位：
-
+;
 [react.development.js](./node_modules/react/cjs/react.development.js)
 
 [react-dom.development.js](./node_modules/react-dom/cjs/react-dom.development.js)
@@ -45,3 +45,7 @@ yarn build core,dom –type=UMD
 ```
 前端 View 层框架的声明周期钩子和 render 方法
 ```
+
+3. 看github上的[big-picture](https://github.com/facebook/react/issues?q=is:open+is:issue+label:%22Type:+Big+Picture%22)issue
+
+>We always discuss such improvement proposals with the community. You can find some of those discussions by the “big picture” label on the React issue tracker.

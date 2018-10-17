@@ -1,6 +1,8 @@
 ### React Fiber Architecture
 
 [原文地址](https://github.com/acdlite/react-fiber-architecture#structure-of-a-fiber)
+
+下面关于`帧`的概念存疑，是指调用栈里的帧还是指浏览器的帧？涉及到渲染时指的是浏览器的渲染帧，讲述fiber相关东西时，可以将一个fiber比作调用栈的一个栈帧，Fiber可视为一个调用栈。
 ---
 
 React Fiber的目的是在动画、布局和工作场合增强它的适应性。最终要的特性是增量渲染：将渲染任务切分成小块，然后分发到多个帧上完成。
@@ -64,13 +66,13 @@ Fiber能够做到的事情：
 
 #### fiber
 
-为了做到上面说的这些，需要将更新任务切分成单位`work`。一个`fiber`表示一个`work`的单位部分。可以把一个fiber当作一个虚拟栈帧。
+为了做到上面说的这些，需要将更新任务切分成单位`work`。一个`fiber`表示一个`work`的单位部分。可以把一个fiber当作一个虚拟栈帧，Fiber看作一个虚拟栈。
 
 计算机追踪程序执行是使用调用栈。当一个函数执行时，一个新的栈帧就被添加到调用栈中。这个栈帧就表示这个函数执行的任务。
 
 在处理UI的时候，问题是如果一次执行过多的任务，会引起丢帧的现象。What's more, some of that work may be unnecessary if it's superseded by a more recent update. This is where the comparison between UI components and function breaks down, because components have more specific concerns than functions in general.
 
-借助浏览器中的`requestIdleCallback`和`requestAnimationFrame`两个API来实现调度。Fiber的目的就是自定义调用栈的执行行为，任意操控栈帧。
+借助浏览器中的`requestIdleCallback`和`requestAnimationFrame`两个API来实现调度。
 
 #### fiber结构
 

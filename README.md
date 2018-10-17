@@ -5,7 +5,7 @@
 ### 说明
 
 为快速定位：
-;
+
 [react.development.js](./node_modules/react/cjs/react.development.js)
 
 [react-dom.development.js](./node_modules/react-dom/cjs/react-dom.development.js)

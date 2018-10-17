@@ -1,0 +1,1 @@
+1. `packages/react/src/ReactBaseClasses.js`没有看到生命周期函数在哪里定义。`packages/create-subscription/src/createSubscription.js`这个里面出现了，但没有定义在`Component`上。

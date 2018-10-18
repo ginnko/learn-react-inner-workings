@@ -117,10 +117,10 @@ updateContainer
 
   获取了`container.context`属性，然后继续调用`scheduleRootUpdate`函数
 
-  - `scheduleRootUpdate`函数
+  - `scheduleRootUpdate`函数(/packages/react-reconciler/src/ReactFiberReconciler.js)
 
   创建了`update`对象，之后先调用`enqueueUpdate`函数，再调用`scheduleWork`函数
 
   - `enqueueUpdate`函数
 
-  这个函数主要使用来将`update`对象插入到更新队列。
+  这个函数主要使用来将`update`对象插入到更新队列。queue使用了链表的结构。

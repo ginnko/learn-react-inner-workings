@@ -112,6 +112,12 @@ updateContainer
     |__scheduleRootUpdate
         |__enqueueUpdate
         |__scheduleWork
+            |__scheduleWorkToRoot
+            |__resetStack
+            |__markPendingPriorityLevel
+            |__storeInteractionsForExpirationTime
+            |__requestWork
+                |__performWork
 ```
   - `updateContainerAtExpirationTime`函数
 
@@ -124,3 +130,16 @@ updateContainer
   - `enqueueUpdate`函数
 
   这个函数主要使用来将`update`对象插入到更新队列。queue使用了链表的结构。
+
+  - `scheduleWork`函数
+
+  在首次渲染阶段，`scheduleWorkToRoot`做了2项工作：
+
+  1. 给`fiber.expirationTime`设置了过期时间1(更新了fiber实例的过期时间)
+  2. 返回了`fiber.stateNode`，这个对象指向`createFiberRoot`函数创建的那个对象
+
+  - `requestWork`函数
+
+  这个函数判断是应该同步执行work还是异步执行work
+
+  - 

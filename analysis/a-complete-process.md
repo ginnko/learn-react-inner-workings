@@ -113,11 +113,16 @@ updateContainer
         |__enqueueUpdate
         |__scheduleWork
             |__scheduleWorkToRoot
-            |__resetStack
-            |__markPendingPriorityLevel
-            |__storeInteractionsForExpirationTime
             |__requestWork
                 |__performWork
+                    |__performWorkOnRoot
+                        |__renderRoot
+                        |   |__createWorkInProgress
+                        |   |__workLoop
+                        |       |__performUnitOfWork
+                        |          |__beginWork
+                        |             |__updateHostRoot
+                        |__completeRoot
 ```
   - `updateContainerAtExpirationTime`函数
 
@@ -142,4 +147,28 @@ updateContainer
 
   这个函数判断是应该同步执行work还是异步执行work
 
-  - 
+  - `performWork`函数
+
+  - `createWorkInProgress`函数(packages/react-reconciler/src/ReactFiber.js)
+
+  `workInProgress`：workInProgress tree是reconcile过程中从fiber tree建立的当前进度快照，用于断点恢复。以fiber tree为蓝本，把每个fiber作为一个工作单元，自顶向下逐节点构造workInProgress tree。workInprogress本质是一个fiber对象。
+
+  这个函数实际就是利用`current`中保存的fiber对象，创建了一个几乎一模一样的fiber对象。
+
+  - `workLoop`函数
+
+  这个函数就是[这篇文章](https://juejin.im/post/5b7016606fb9a0099406f8de)中所说的`大循环`。
+
+  - `performUnitOfWork`函数
+
+  这个函数的参数是一个`workInProgress`对象。
+
+  在这个函数中会调用`beginWork`这个函数。
+
+  - `beginWork`函数
+
+  这个函数会返回当前节点的子节点。
+
+  这个函数接受三个参数：current(fiber)，workInProgress(fiber)，renderExpirationTime
+
+  首次渲染的时候，没有走第一个条件分支。通过`workInProgress.tag`找到`HostRoot`分支，执行`updateHostRoot`函数并返回返回值，这个返回值是一个fiber对象。

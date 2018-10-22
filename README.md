@@ -59,3 +59,29 @@ yarn build core,dom –type=UMD
 3. 看github上的[big-picture](https://github.com/facebook/react/issues?q=is:open+is:issue+label:%22Type:+Big+Picture%22)issue
 
 >We always discuss such improvement proposals with the community. You can find some of those discussions by the “big picture” label on the React issue tracker.
+
+### 参考资料
+
+下面的资料除了第一篇都有讲渲染流程，不同作者重点讲的侧重点不同，真的是差的很大。
+
+1. [深入理解React fiber](http://www.ayqy.net/blog/dive-into-react-fiber/)(:star::star::star::star:)
+
+这个讲Fiber涉及的概念讲的很好，但是没有结合源码流程，对于第一次看的人来说，看到后面一头雾水。
+
+2. [React fiber架构](https://juejin.im/post/5b7016606fb9a0099406f8de)(:star::star::star::star:)
+
+这个讲的很好，讲流程的时候，没有讲fiber对象的创建过程，reconciliation的过程使用`setState`为例讲的。
+
+3. [React源码全方位分析](http://www.sosout.com/2018/08/12/react-source-analysis.html)(:star::star::star:)
+
+这个有讲到fiber对象的创建过程，后面就差强人意了。
+
+4. [React源码速览](http://zxc0328.github.io/2017/09/28/react-16-source/)(:star::star::star::star::star:)
+
+这个讲的非常好，啪啪啪，虽然有一部分的源码已经更新了，但依然掩盖不住作者的大神功底，逻辑很清楚。
+
+5. [暮无雪](https://it.520mwx.com/view/6004)(:star::star::star::star::star:)
+
+刚开始看这个，有关于首次渲染的说明，没细看，~~但感觉应该会不错~~。
+
+什么叫不错，简直就是救我狗命得秘籍啊!!!

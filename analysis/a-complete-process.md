@@ -38,7 +38,7 @@ ReactDOM.render(<App />, document.getElementById('root'));
 
 2. 创建了`FiberRoot`对象
 
-  这个对象是字面两创建。
+  这个对象是字面量创建。
 
   目前两个看到的属性：
 
@@ -111,6 +111,7 @@ updateContainer
 |__updateContainerAtExpirationTime
     |__scheduleRootUpdate
         |__enqueueUpdate
+        |  |__createUpdateQueue
         |__scheduleWork
             |__scheduleWorkToRoot
             |__requestWork
@@ -122,6 +123,9 @@ updateContainer
                         |       |__performUnitOfWork
                         |          |__beginWork
                         |             |__updateHostRoot
+                        |                |__processUpdateQueue
+                        |                |__reconcileChildren
+                        |                   |__reconcileChildFibers
                         |__completeRoot
 ```
   - `updateContainerAtExpirationTime`函数
@@ -130,7 +134,54 @@ updateContainer
 
   - `scheduleRootUpdate`函数(/packages/react-reconciler/src/ReactFiberReconciler.js)
 
-  创建了`update`对象，之后先调用`enqueueUpdate`函数，再调用`scheduleWork`函数
+  创建了`update`对象，之后先调用`enqueueUpdate`函数，再调用`scheduleWork`函数。
+
+  `update`对象
+
+    在调度算法执行过程中，会将需要进行变更的工作以一个Update对象来表示。同一个updateQueue对列中的update对象会通过next属性串联起来，形成一个单链表。
+
+  `update`对象得重要属性：
+
+    - tag：Number类型。当前有0~3，分别是UpdateState、ReplaceState、ForceUpdate、CaptureUpdate。
+        1. UpdateState：如果payload是普通对象，则把它当做新state。如果payload是函数，则把执行函数得到得返回值作为新state。如果新state不为空，则与原来得State进行和并，返回一个新对象。**`setState`设置state得和并是在此处处理得？**
+        2. ReplaceState：直接返回这里的payload。如果payload是函数，则使用它得返回值作为新的state。
+        3. ForceUpdate：仅仅设置`hasForceUpdate`为`true`，返回原始得state。
+        4. CaptureUpdate：仅仅是将`workInProgress.effectTag`设置为清空`shouldCapture`标记位，增加`didCapture`标记位。
+    - payload：Function|Object类型。表示这个更新对应的**数据内容**。
+    - callback：Function类型。表示更新后得回调函数，如果这个回调有值，就会在UpdateQueue得副作用链表中挂载当前update对象。
+    - next：update对象类型。updateQueue中得update对象之间通过next来串联，表示下一个update对象。
+
+  [这篇文章](https://it.520mwx.com/view/6004)中有说到`update.payload`中保存的是jsx组件的`ReactElement`，之前没注意，这里补充一下。
+
+  - `createUpdateQueue`函数
+
+  这个函数源码如下：
+
+  ```js
+    function createUpdateQueue<State>(baseState: State): UpdateQueue<State> {
+      const queue: UpdateQueue<State> = {
+        baseState,
+        firstUpdate: null,
+        lastUpdate: null,
+        firstCapturedUpdate: null,
+        lastCapturedUpdate: null,
+        firstEffect: null,
+        lastEffect: null,
+        firstCapturedEffect: null,
+        lastCapturedEffect: null,
+      };
+      return queue;
+    }
+  ```
+  `updateQueue`是个对象，有如下属性：
+
+      - baseState：普通对象。表示更新前的基础状态。
+      - firstUpdate：Update对象。第一个Update对象的引用，总体是一条单链表。
+      - lastUpdate：Update对象。最后一个Update对象的引用。
+      - firstEffect：Update对象。第一个包含副作用(Callback)的Update对象得引用。
+      - lastEffect：Update对象。最后一个包含副作用(Callback)的Update对象得引用。
+
+  ![updateQueue结构](./images/updateQueue.png)
 
   - `enqueueUpdate`函数
 
@@ -159,6 +210,25 @@ updateContainer
 
   这个函数就是[这篇文章](https://juejin.im/post/5b7016606fb9a0099406f8de)中所说的`大循环`。
 
+  workLoop函数的源码如下：
+
+  ```js
+  function workLoop(isYieldy) {
+    if (!isYieldy) {
+      // Flush work without yielding
+      while (nextUnitOfWork !== null) {
+        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+      }
+    } else {
+      // Flush asynchronous work until the deadline runs out of time.
+      while (nextUnitOfWork !== null && !shouldYield()) {
+        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+      }
+    }
+  }
+  ```
+  [这篇文章](https://it.520mwx.com/view/6004)说到，workLoop中的这行代码`nextUnitOfWork = performUnitOfWork(nextUnitOfWork);`是个典型的递归转循环的写法。这样写成循环，一个是避免调用栈不断堆叠以及调用栈溢出的问题;而是结合其他Scheduler代码的辅助变量，可以实现遍历随时终止，随时恢复的效果。
+
   - `performUnitOfWork`函数
 
   这个函数的参数是一个`workInProgress`对象。
@@ -167,8 +237,15 @@ updateContainer
 
   - `beginWork`函数
 
-  这个函数会返回当前节点的子节点。
+  这个函数接受三个参数：current(fiber)，workInProgress(fiber)，renderExpirationTime，会返回当前节点的子节点。
 
-  这个函数接受三个参数：current(fiber)，workInProgress(fiber)，renderExpirationTime
+  这个函数内部有众多分支，根据`workInProgress.tag`的类型进入不同分支走不同的更新函数。首次渲染的时候，没有走第一个条件分支，整个这个分支是用来处理Context的。通过`workInProgress.tag`找到`HostRoot`分支，执行`updateHostRoot`函数并返回返回值，这个返回值是一个fiber对象。
 
-  首次渲染的时候，没有走第一个条件分支。通过`workInProgress.tag`找到`HostRoot`分支，执行`updateHostRoot`函数并返回返回值，这个返回值是一个fiber对象。
+  **在React的事务风格中，一个work会分为begin和commit两个阶段。**
+
+  - `updateHostRoot`函数
+
+  [这篇文章](https://it.520mwx.com/view/6004)说这个函数主要做了两件事：
+
+    1. 处理更新队列，得出新的state，完成任务的函数是`processUpdateQueue`。整体而言，这个方法要做得事情就是遍历这个UpdateQueue，然后计算出最后得新的State，然后存到`workInProgress.memoizedState`中。
+    2. 创建或更新FiberNode的child，得到下一个工作循环得入参(也是一个fiberNode对象)，完成任务得函数是`reconcileChildren`(packages/react-reconciler/src/ReactFiberBeginWork.js)

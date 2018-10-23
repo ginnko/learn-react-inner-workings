@@ -248,4 +248,9 @@ updateContainer
   [这篇文章](https://it.520mwx.com/view/6004)说这个函数主要做了两件事：
 
     1. 处理更新队列，得出新的state，完成任务的函数是`processUpdateQueue`。整体而言，这个方法要做得事情就是遍历这个UpdateQueue，然后计算出最后得新的State，然后存到`workInProgress.memoizedState`中。
-    2. 创建或更新FiberNode的child，得到下一个工作循环得入参(也是一个fiberNode对象)，完成任务得函数是`reconcileChildren`(packages/react-reconciler/src/ReactFiberBeginWork.js)
+
+    2. 创建或更新FiberNode的child，得到下一个工作循环的入参(也是一个fiberNode对象)，完成任务得函数是`reconcileChildren`(packages/react-reconciler/src/ReactFiberBeginWork.js)
+
+  - `processUpdateQueue`函数
+
+  

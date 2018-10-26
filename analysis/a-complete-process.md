@@ -108,25 +108,33 @@ container = {
 
 ```
 updateContainer
-|__updateContainerAtExpirationTime
-    |__scheduleRootUpdate
-        |__enqueueUpdate
-        |  |__createUpdateQueue
-        |__scheduleWork
-            |__scheduleWorkToRoot
-            |__requestWork
-                |__performWork
-                    |__performWorkOnRoot
-                        |__renderRoot
-                        |   |__createWorkInProgress
-                        |   |__workLoop
-                        |       |__performUnitOfWork
-                        |          |__beginWork
-                        |             |__updateHostRoot
-                        |                |__processUpdateQueue
-                        |                |__reconcileChildren
-                        |                   |__reconcileChildFibers
-                        |__completeRoot
+|_updateContainerAtExpirationTime
+  |_scheduleRootUpdate
+    |_enqueueUpdate
+    | |_createUpdateQueue
+    |_scheduleWork
+      |_scheduleWorkToRoot
+      |_requestWork
+          |_performWork
+            |_performWorkOnRoot
+              |_renderRoot
+              | |_createWorkInProgress
+              | |_workLoop
+              |   |_performUnitOfWork
+              |     |_beginWork
+              |       |_updateClassComponent
+              |       | |_constructClassInstance
+              |       | |_adoptClassInstance
+              |       | |_mountClassInstance
+              |       |_updateHostRoot
+              |         |_processUpdateQueue
+              |         |_reconcileChildren
+              |           |_reconcileChildFibers
+              |             |_placeSingleChild
+              |               |_reconcileSingleElement
+              |                 |_createFiberFromElement
+              |                   |_createFiber
+              |_completeRoot
 ```
   - `updateContainerAtExpirationTime`函数
 
@@ -253,4 +261,61 @@ updateContainer
 
   - `processUpdateQueue`函数
 
+  - `reconcileChildren`函数
+
+  - `reconcileChildFibers`函数
+
+    这个函数中有一部分代码是根据`newChild`对象的`$$type`属性的值得不同执行不同的操作。首次渲染时，此处的属性为：`$$typeof:Symbol(react.element)`，走第一条分支。
+
+    ```js
+      if (isObject) {
+          switch (newChild.$$typeof) {
+            case REACT_ELEMENT_TYPE:
+              return placeSingleChild(reconcileSingleElement(returnFiber, currentFirstChild, newChild, expirationTime));
+
+            case REACT_PORTAL_TYPE:
+              return placeSingleChild(reconcileSinglePortal(returnFiber, currentFirstChild, newChild, expirationTime));
+          }
+        }
+    ```
   
+  - `reconcileSingleElement`函数
+
+    先给`<App />`创建了一个对应得fiberNode，并返回继续大循环。再次进入`beginWork`函数，走ClassComponent分支。
+
+  - `updateClassComponent`函数
+
+    `beginWork`函数中`<App />`的fieberNode会走这个分支。
+
+  - `constructClassInstance`函数(packages/react-reconciler/src/ReactFiberClassComponent.js)
+  
+  这个函数主要用来实例化`ReactComponent`，最后会返回这个实例，但是在首次渲染中好像没有用到这个返回值。
+
+    1. 通过`new`Class的constructor函数初始化了组件实例。
+    2. 通过instance.state给workInProgress.memoizedState赋了初始值
+    3. 将workInProgress和instance传入adoptClassInstance函数
+
+  - `adoptClassInstance`函数
+
+    在这个函数里会给实例添加一个updater属性，属性值是`classComponentUpdater`。这是一个对象，其中包含了`isMounted`,`enqueueSetState`,`enqueueReplaceState`,`enqueueForceUpdate`四个函数。
+
+    之后调用了这个函数`ReactInstanceMap.set(instance, workInProgress)`，注释说这行代码得作用是让instance能够拿到fiber对象，然后instance才能够安排更新。这个方法很简单，就是给isntance添加了一个`_reactInternalFiber`属性，属性值是对应的fiber。
+
+    之后会返回进入`mountClassInstance`函数。
+
+  - `mountClassInstance`函数
+
+  这个函数的注释写道：
+
+  >Invokes the mount life-cycles on a previously never rendered instance.
+
+  **mount是生命周期中的一环！！！**
+
+  这个函数中能执行得过程包括：
+
+  1. processUpdateQueue
+  2. getDerivedStateFromProps
+  3. componentWillMount
+
+  首次渲染这些都不存在，直接跳出。
+

@@ -151,7 +151,7 @@ updateContainer
     - callback：Function类型。表示更新后得回调函数，如果这个回调有值，就会在UpdateQueue得副作用链表中挂载当前update对象。
     - next：update对象类型。updateQueue中得update对象之间通过next来串联，表示下一个update对象。
 
-  [这篇文章](https://it.520mwx.com/view/6004)中有说到`update.payload`中保存的是jsx组件的`ReactElement`，之前没注意，这里补充一下。
+  [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)中有说到`update.payload`中保存的是jsx组件的`ReactElement`，之前没注意，这里补充一下。
 
   - `createUpdateQueue`函数
 
@@ -227,7 +227,7 @@ updateContainer
     }
   }
   ```
-  [这篇文章](https://it.520mwx.com/view/6004)说到，workLoop中的这行代码`nextUnitOfWork = performUnitOfWork(nextUnitOfWork);`是个典型的递归转循环的写法。这样写成循环，一个是避免调用栈不断堆叠以及调用栈溢出的问题;而是结合其他Scheduler代码的辅助变量，可以实现遍历随时终止，随时恢复的效果。
+  [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)说到，workLoop中的这行代码`nextUnitOfWork = performUnitOfWork(nextUnitOfWork);`是个典型的递归转循环的写法。这样写成循环，一个是避免调用栈不断堆叠以及调用栈溢出的问题;而是结合其他Scheduler代码的辅助变量，可以实现遍历随时终止，随时恢复的效果。
 
   - `performUnitOfWork`函数
 
@@ -245,7 +245,7 @@ updateContainer
 
   - `updateHostRoot`函数
 
-  [这篇文章](https://it.520mwx.com/view/6004)说这个函数主要做了两件事：
+  [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)说这个函数主要做了两件事：
 
     1. 处理更新队列，得出新的state，完成任务的函数是`processUpdateQueue`。整体而言，这个方法要做得事情就是遍历这个UpdateQueue，然后计算出最后得新的State，然后存到`workInProgress.memoizedState`中。
 

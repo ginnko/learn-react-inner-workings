@@ -80,8 +80,8 @@ yarn build core,dom –type=UMD
 
 这个讲的非常好，啪啪啪，虽然有一部分的源码已经更新了，但依然掩盖不住作者的大神功底，逻辑很清楚。
 
-5. [暮无雪](https://it.520mwx.com/view/6004)(:star::star::star::star::star:)
+5. [How React Works](https://www.cnblogs.com/lcllao/p/9642376.html)(:star::star::star::star::star:)
 
 刚开始看这个，有关于首次渲染的说明，没细看，~~但感觉应该会不错~~。
 
-什么叫不错，简直就是救我狗命得秘籍啊!!!
+什么叫不错，简直就是救我狗命的秘籍啊!!!

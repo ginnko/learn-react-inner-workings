@@ -126,6 +126,7 @@ updateContainer
               |       | |_constructClassInstance
               |       | |_adoptClassInstance
               |       | |_mountClassInstance
+              |       | |_finishClassComponent
               |       |_updateHostRoot
               |         |_processUpdateQueue
               |         |_reconcileChildren
@@ -319,3 +320,25 @@ updateContainer
 
   首次渲染这些都不存在，直接跳出。
 
+  - `finishClassComponent`函数(packages/react-reconciler/src/ReactFiberBeginWork.js)
+
+  该函数中会有一个设置`phase`得函数，用来设置当前所处得阶段。`setCurrentPhase()`
+
+  该函数中的这行代码：`nextChildren = instance.render()`，会调用`createElement`函数。
+
+  ~~返回得是这样得jsx，但是最外层得`<div className="App">`以及`<header className="App-header">`和它里面的内容好像走的不同的流程，这里好奇怪，不知道发生了神马...~~
+
+  ```js
+  return (
+    <div className="App">
+      <header className="App-header">
+        <div>{count}</div>
+        <button onClick={this.onClick}>add</button>
+      </header>
+    </div>
+  );
+  ```
+
+  都走了创建虚拟节点的过程，只不过创建顺序是从内到外，同级按先后顺序。内部创建的虚拟节点对象作为外部虚拟节点对象中`children`属性的值。`nextChildren = instance.render()`这行代码会将上面`return`包裹的全部标签一次性(创建的过程是分开的)全部创建好，也就是说此处的`nextChildren`包含的是一棵完整的虚拟节点对象树。
+
+  接着该函数向`reconcileChildren`中传入这个新获得的虚拟节点对象。

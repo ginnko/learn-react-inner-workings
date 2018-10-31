@@ -127,6 +127,7 @@ updateContainer
               |       | |_adoptClassInstance
               |       | |_mountClassInstance
               |       | |_finishClassComponent
+              |       |_updateHostComponent
               |       |_updateHostRoot
               |         |_processUpdateQueue
               |         |_reconcileChildren
@@ -264,6 +265,8 @@ updateContainer
 
   - `reconcileChildren`函数
 
+    这个函数的主要作用是给`workInProgress`的`child`设置了`FiberNode`对象，`FiberNode`对象的`return`设置成`workInProgress`。
+
   - `reconcileChildFibers`函数
 
     这个函数中有一部分代码是根据`newChild`对象的`$$type`属性的值得不同执行不同的操作。首次渲染时，此处的属性为：`$$typeof:Symbol(react.element)`，走第一条分支。
@@ -342,3 +345,39 @@ updateContainer
   都走了创建虚拟节点的过程，只不过创建顺序是从内到外，同级按先后顺序。内部创建的虚拟节点对象作为外部虚拟节点对象中`children`属性的值。`nextChildren = instance.render()`这行代码会将上面`return`包裹的全部标签一次性(创建的过程是分开的)全部创建好，也就是说此处的`nextChildren`包含的是一棵完整的虚拟节点对象树。
 
   接着该函数向`reconcileChildren`中传入这个新获得的虚拟节点对象。
+
+  这是第二次进入这个`reconcileChildren`函数，这次会走第一个分支。源码中给的注释如下：
+
+  >// If this is a fresh new component that hasn't been rendered yet, we
+  >// won't update its child set by applying minimal side-effects. Instead,
+  >// we will add them all to the child before it gets rendered. That means
+  >// we can optimize this reconciliation pass by not tracking side-effects.
+
+  翻译一下就是：如果这是一个处男组件，我们不会通过应用最小副作用(更新)来更新他的崽子。相反，我们把所有的副作用在破处之前都扔给他的崽子。这就意味着我们我们可以不用追踪副作用来优化调度过程。**不知道在说啥，总之就是没有给崽子们上更新**
+
+  `mountChildFibers`和`reconcileChildFibers`是两个类似的函数，是由同一个高级函数派生出来的。
+
+  之后又进入`placeSingleChild(reconcileSingleElement(returnFiber, currentFirstChild, newChild, expirationTime))`，再执行这行代码：`var _created4 = createFiberFromElement(element, returnFiber.mode, expirationTime);`。其中的`fiberTag = HostComponent;`设置了fiber的类型，终于出现了HostComponent。
+
+  然后执行这行关键代码：`fiber = createFiber(fiberTag, pendingProps, key, mode);`
+
+  之后返回`finishClassComponent`函数，遇到两行保存`state`和`props`的代码：
+
+  ```js
+  memoizeState(workInProgress, instance.state);
+  memoizeProps(workInProgress, instance.props);
+  ```
+
+  上面两行代码的效果就是给`workInProgress`对象的`memoizedProps`和`memoizedState`两个属性分别赋值`instance.props`和`instance.state`。
+
+  `finishClassComponent`返回的是`workInProgress.child`，也就是刚刚新建的FiberNode
+
+  之后再次返回大循环，执行`updateHostComponent(current$$1, workInProgress, renderExpirationTime)`。（workInProgress的本质是个FiberNode）
+
+  [文章](https://www.cnblogs.com/lcllao/p/9642376.html)中说的处理`子FiberNode`时使用的图终于出现了：
+
+  ![处理崽子们](./images/处理崽子们.png)
+
+  进入`updateHostComponent`函数
+
+- `updateHostComponent`

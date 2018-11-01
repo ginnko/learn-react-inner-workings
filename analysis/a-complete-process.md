@@ -121,13 +121,18 @@ updateContainer
               | |_createWorkInProgress
               | |_workLoop
               |   |_performUnitOfWork
+              |     |_completeUnitOfWork
               |     |_beginWork
               |       |_updateClassComponent
               |       | |_constructClassInstance
               |       | |_adoptClassInstance
               |       | |_mountClassInstance
               |       | |_finishClassComponent
+              |       | |_reconcileChildren
               |       |_updateHostComponent
+              |       | |_reconcileChildren
+              |       |   |_reconcileChildrenArray
+              |       |     |_createChild
               |       |_updateHostRoot
               |         |_processUpdateQueue
               |         |_reconcileChildren
@@ -381,3 +386,108 @@ updateContainer
   进入`updateHostComponent`函数
 
 - `updateHostComponent`
+
+  进入`reconcileChildren`函数。
+
+  ```js
+  return (
+    <div className="App">
+      <header className="App-header">//...................................到这里每次循环都差不多
+        <div>{count}</div>           //...................................到这里就不一样了
+        <button onClick={this.onClick}>add</button>
+      </header>
+    </div>
+  );
+  ```
+  上面代码中的**不一样**的地方是本次大循环中`updateHostComponent`中的`nextChildren`变量的值是一个数组，包含两个虚拟节点对象，也就是`header`中的`div`和`button`。这次在`reconcileChildFibers`中走的是这行代码：
+
+  ```js
+    if (isArray$1(newChild)) {
+      return reconcileChildrenArray(returnFiber, currentFirstChild, newChild, expirationTime);
+    }
+  ```
+  进入`reconcileChildrenArray`函数，之后再进入`createChild`函数，又会遇到`createFiberFromElement`函数，重复之前创建FiberNode的过程。
+
+  ```js
+  for (; newIdx < newChildren.length; newIdx++) { 
+    var _newFiber = createChild(returnFiber, newChildren[newIdx], expirationTime);
+
+    if (!_newFiber) {
+      continue;
+    }
+
+    lastPlacedIndex = placeChild(_newFiber, lastPlacedIndex, newIdx);
+
+    //=======================分割线=====================================//
+    if (previousNewFiber === null) {
+      // TODO: Move out of the loop. This only happens for the first run.
+      resultingFirstChild = _newFiber;
+    } else {
+      previousNewFiber.sibling = _newFiber;
+    }
+
+    previousNewFiber = _newFiber;
+  }
+  ```
+  上面这部分代码是实际构建FiberNode的部分，重点看分割线下面的部分。这几行代码的意思是将第一个创建的FiberNode指给resultingFirstChild，第二个FiberNode对象指给resultingFirstChild.sibling，后面的指给resultingFirstChild.sibling.sibling，以此类推。最后返回resultingFirstChild，赋给它们的父对象的child属性。
+
+  ~~这里有个疑问啊，`<div>{0}</div>`它对应的FiberNode中的nextProps属性的值为：`{children: 0}`，在进行`newChild = nextProps.children`时，newChild应该是0啊，为啥是null？！理论上在后续的reconcileChildFibers中应该走`if (typeof newChild === 'string' || typeof newChild === 'number')`这个分支，但实际走了`deleteRemainingChildren(returnFiber, currentFirstChild)`直接返回了`null`。~~
+
+  破案了：由于`shouldSetTextContent`函数的存在，newChild被强制设置为null。这里看到组件中的文字是直接作为属性处理的。
+
+  因为`next===null`，所以这次在`performUnitOfWork`函数中，走了这个分支函数：`next = completeUnitOfWork(workInProgress);`
+
+  - `completeUnitOfWork`
+
+    先对第一个`div`执行`completeWork`函数，这个函数的最后会返回一个sibling，作为next：`next = completeUnitOfWork(workInProgress);`，此时，这个next中包含的是`button`。
+
+    当`button`的`completeWork`返回后，next和sibling都是null，但是`returnFiber`并不是null，而是它们的父节点FiberNode，走这个分支：
+
+    ```js
+      else if (returnFiber !== null) {
+        // If there's no more work in this returnFiber. Complete the returnFiber.
+        workInProgress = returnFiber;
+        continue;
+      }
+    ```
+
+    可以看到上面的代码中`workInProgress`对象已经变成了父元素的FiberNode(header),`header`进入`appendAllChildren`函数后，由于它有child，所以执行下面这行代码：
+
+    ```js
+      if (node.tag === HostComponent || node.tag === HostText) {
+        appendInitialChild(parent, node.stateNode);
+      }
+    ```
+    进入`appendInitialChild`函数，这个函数的真面目：
+
+    ```js
+    function appendInitialChild(parentInstance, child) {
+      parentInstance.appendChild(child);//..............这个地方将<div>{count}</div>插入到<header className="App-header"></header>中
+    }
+    ```
+    然后`node = node.sibling;`继续重复上面的过程，将`<button>click</button>`也插入到`<header className="App-header"></header>`中。
+
+    此时，执行到此处：
+
+    ```js
+      while (node.sibling === null) {
+        if (node.return === null || node.return === workInProgress) {//.......由于node.return === workInProgress成立，直接返回了
+          return;
+        }
+
+        node = node.return;
+      }
+    ```
+    之后`workInProgress`的值为`<div className="App"></div>`对应的FiberNode对象，创建它的DOM实例，将`<header className="App-header"></header>`插入到`<div className="App"></div>`中。之后执行`workInProgress.stateNode = instance;`使得`<div className="App"></div>`对应的FiberNode对象能够拿到其对应的DOM实例对象。
+
+    `<div className="App"></div>`并没有接着走相同的路径将它插入到<App />中，继而<App />插入到容器中，前面的代码已经进行过这类操作了？不记得了...
+
+    然后退出了大循环。。。这个地方要整理一下，骚~乱~
+
+  - `completeWork`
+
+    在这个函数中选择执行`HostComponent`分支，先是获得了容器的DOM对象，然后`var instance = createInstance(type, newProps, rootContainerInstance, currentHostContext, workInProgress);`进入`createInstance`函数，之后再进入`createElement`函数。
+
+    这里传入`rootContainerElement`只是为了获得`document`对象，并没有其他想象中的操作。
+
+    之后回到`completeWork`中，执行`appendAllChildren(instance, workInProgress)`这行代码，因为没有child，直接退出了。后面接着执行`workInProgress.stateNode = instance;`，返回一个null就退出了completeWork函数。

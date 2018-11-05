@@ -106,43 +106,7 @@ container = {
 
   说实话，不觉得这个函数起名叫`updateContainer`是准确的。`updateContainer`函数完成了创建优先级的任务，并将`优先级`和`fiber`一同传入`updateContainerAtExpirationTime`。
 
-```
-updateContainer
-|_updateContainerAtExpirationTime
-  |_scheduleRootUpdate
-    |_enqueueUpdate
-    | |_createUpdateQueue
-    |_scheduleWork
-      |_scheduleWorkToRoot
-      |_requestWork
-          |_performWork
-            |_performWorkOnRoot
-              |_renderRoot
-              | |_createWorkInProgress
-              | |_workLoop
-              |   |_performUnitOfWork
-              |     |_completeUnitOfWork
-              |     |_beginWork
-              |       |_updateClassComponent
-              |       | |_constructClassInstance
-              |       | |_adoptClassInstance
-              |       | |_mountClassInstance
-              |       | |_finishClassComponent
-              |       | |_reconcileChildren
-              |       |_updateHostComponent
-              |       | |_reconcileChildren
-              |       |   |_reconcileChildrenArray
-              |       |     |_createChild
-              |       |_updateHostRoot
-              |         |_processUpdateQueue
-              |         |_reconcileChildren
-              |           |_reconcileChildFibers
-              |             |_placeSingleChild
-              |               |_reconcileSingleElement
-              |                 |_createFiberFromElement
-              |                   |_createFiber
-              |_completeRoot
-```
+
   - `updateContainerAtExpirationTime`函数
 
   获取了`container.context`属性，然后继续调用`scheduleRootUpdate`函数
@@ -484,6 +448,8 @@ updateContainer
 
     然后退出了大循环。。。这个地方要整理一下，骚~乱~
 
+    总之上面这个过程是深度优先遍历。
+
   - `completeWork`
 
     在这个函数中选择执行`HostComponent`分支，先是获得了容器的DOM对象，然后`var instance = createInstance(type, newProps, rootContainerInstance, currentHostContext, workInProgress);`进入`createInstance`函数，之后再进入`createElement`函数。
@@ -491,3 +457,144 @@ updateContainer
     这里传入`rootContainerElement`只是为了获得`document`对象，并没有其他想象中的操作。
 
     之后回到`completeWork`中，执行`appendAllChildren(instance, workInProgress)`这行代码，因为没有child，直接退出了。后面接着执行`workInProgress.stateNode = instance;`，返回一个null就退出了completeWork函数。
+
+---
+**这里插个嘴！！！**
+
+上面描述的过程仅限于FiberNode的构建以及FiberNode树的构建
+
+1. 副作用的处理没有注意
+2. 一个标签的属性在何处附加到标签上的也没有注意
+---
+
+  - `completeRoot`函数
+
+  ```js
+    if (finishedWork !== null) {
+      // We've completed the root. Commit it.
+      completeRoot(root, finishedWork, expirationTime);
+    }
+  ```
+  注释里写道`completeRoot`函数就开始了提交过程。之后执行`commitRoot`函数。
+
+  - `commitRoot`函数
+
+  下面这段来自[这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)
+
+  >这里也是一个链表的遍历，而遍历的就是之前阶段生成的 effect 链表。在遍历之前，由于初始化的时候，由于 (HostRoot)FiberNode.effectTag为Callback(初始化回调))，会先将 finishedWork 放到链表尾部。
+
+  ![finishedWorkdToEnd](./images/finishedWorkdToEnd.png)
+
+  执行了这里的代码：
+
+  ```js
+  if (finishedWork.effectTag > PerformedWork) {//此处的effectTag = 32
+    // A fiber's effect list consists only of its children, not itself. So if
+    // the root has an effect, we need to add it to the end of the list. The
+    // resulting list is the set that would belong to the root's parent, if
+    // it had one; that is, all the effects in the tree including the root.
+    if (finishedWork.lastEffect !== null) {
+      finishedWork.lastEffect.nextEffect = finishedWork;
+      firstEffect = finishedWork.firstEffect;
+    } else {
+      firstEffect = finishedWork;
+    }
+  }
+  ```
+  遇到`prepareForCommit`函数
+
+  - `prepareForCommit`函数
+
+
+  在这个函数中，执行了这行代码：`return doc.activeElement || doc.body;`，其中的[`document.activeElement`](https://developer.mozilla.org/en-US/docs/Web/API/DocumentOrShadowRoot/activeElement)返回当前聚焦的元素。此刻聚焦的是`body`。
+
+  这个函数获取了当前聚焦的元素以及一些其他信息。
+
+  退出后，遇到`commitBeforeMutationLifecycles`函数。
+
+  - `commitBeforeMutationLifecycles`函数
+
+  首次渲染并未进入`commitBeforeMutationLifeCycles`函数，这是由于`if (effectTag & Snapshot)`这行判断中，进行了位运算，`Snapshot`为256，导致计算结果为0，没有走这个分支。
+
+  退出后遇到`commitAllHostEffects()`函数
+
+  - `commitBeforeMutationLifeCycles`函数
+
+  这个函数的源码如下：
+
+  ```js
+    function commitBeforeMutationLifeCycles(
+      current: Fiber | null,
+      finishedWork: Fiber,
+    ): void {
+      switch (finishedWork.tag) {
+        case ClassComponent:
+        case ClassComponentLazy: {
+          if (finishedWork.effectTag & Snapshot) {
+            if (current !== null) {
+              const prevProps = current.memoizedProps;
+              const prevState = current.memoizedState;
+              startPhaseTimer(finishedWork, 'getSnapshotBeforeUpdate');
+              const instance = finishedWork.stateNode;
+              instance.props = finishedWork.memoizedProps;
+              instance.state = finishedWork.memoizedState;
+              const snapshot = instance.getSnapshotBeforeUpdate(
+                prevProps,
+                prevState,
+              );
+              if (__DEV__) {
+                const didWarnSet = ((didWarnAboutUndefinedSnapshotBeforeUpdate: any): Set<
+                  mixed,
+                >);
+                if (snapshot === undefined && !didWarnSet.has(finishedWork.type)) {
+                  didWarnSet.add(finishedWork.type);
+                  warningWithoutStack(
+                    false,
+                    '%s.getSnapshotBeforeUpdate(): A snapshot value (or null) ' +
+                      'must be returned. You have returned undefined.',
+                    getComponentName(finishedWork.type),
+                  );
+                }
+              }
+              instance.__reactInternalSnapshotBeforeUpdate = snapshot;
+              stopPhaseTimer();
+            }
+          }
+          return;
+        }
+        case HostRoot:
+        case HostComponent:
+        case HostText:
+        case HostPortal:
+          // Nothing to do for these component types
+          return;
+        default: {
+          invariant(
+            false,
+            'This unit of work tag should not have side-effects. This error is ' +
+              'likely caused by a bug in React. Please file an issue.',
+          );
+        }
+      }
+    }
+  ```
+  这个函数里的这行代码：
+  
+  ```js
+    const snapshot = instance.getSnapshotBeforeUpdate(
+      prevProps,
+      prevState,
+    );
+  ```
+
+  会执行一个生命周期函数`getSnapshotBeforeUpdate()`
+
+  - `commitAllHostEffects`函数
+
+  这个函数主体部分是个循环，用来遍历节点的nextEffect，根据其effectTag类型执行相应的函数，首次渲染走的`Placement`分支，遇到`commitPlacement(nextEffect);`函数(这些都是commit方法)。
+
+  第一个节点是`<App />`。
+
+  后面是一个while循环，用来`插入`节点，`div#root`和`div.App`传入`appendChildToContainer`函数，然后`div#root.appendChild(div.App)`。
+
+  经过上面这一步，页面上已经渲染出了所有的内容。

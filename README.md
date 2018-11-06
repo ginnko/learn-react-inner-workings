@@ -4,11 +4,11 @@
 
 ### 说明
 
-为快速定位：
+为快速定位(下面两个链接用于方便找到文件链接)：
 
-[react.development.js](./node_modules/react/cjs/react.development.js)
+[(./node_modules/react/cjs/react.development.js)](./node_modules/react/cjs/react.development.js)
 
-[react-dom.development.js](./node_modules/react-dom/cjs/react-dom.development.js)
+[(./node_modules/react-dom/cjs/react-dom.development.js)](./node_modules/react-dom/cjs/react-dom.development.js)
 
 为调试：
 
@@ -85,3 +85,7 @@ yarn build core,dom –type=UMD
 刚开始看这个，有关于首次渲染的说明，没细看，~~但感觉应该会不错~~。
 
 什么叫不错，简直就是救我狗命的秘籍啊!!!
+
+6. [A look inside React Fiber – how work will get done](http://makersden.io/blog/look-inside-fiber)
+
+据说小说体写的，未看，不知详情。

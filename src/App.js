@@ -5,23 +5,20 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      count: 0
+      msg:'init'
     };
   }
-  onClick = () => {
-    const newCount = this.state.count + 1;
-    this.setState({
-      count: newCount
-    });
-  }
+
   render() {
-    const count = this.state.count;
     return (
       <div className="App">
-        <header className="App-header">
-          <div>{count}</div>
-          <button onClick={this.onClick}>add</button>
-        </header>
+        <p className="App-intro">
+          To get started, edit <code>{this.state.msg}</code> and save to reload.
+        </p>
+        <button onClick={() => {
+          this.setState({msg: 'clicked'});
+        }}>hehe
+        </button>
       </div>
     );
   }

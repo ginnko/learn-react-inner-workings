@@ -6,7 +6,9 @@
 ReactDOM.render(<App />, document.getElementById('root'));
 ```
 ---
-### 从调用栈中的执行情况，可以看到首先会处理`<App />`这部分，结果就是将`<App />`转化成一个普通的js对象，也就是`React Element`。
+### 创建React Element
+
+从调用栈中的执行情况，可以看到首先会处理`<App />`这部分，结果就是将`<App />`转化成一个普通的js对象，也就是`React Element`。
 
   涉及的主要函数包括（按调用顺序）：
 
@@ -14,7 +16,7 @@ ReactDOM.render(<App />, document.getElementById('root'));
   2. `createElement`：这个函数位于`/packages/react/src/ReactElement.js`
   3. `ReactElement`：返回一个普通对象。这个函数位于`/packages/react/src/ReactElement.js`
 
-  此时创建的[**React Element**]("#AppReactEle")对象和主要属性包括：
+  此时创建的**React Element**对象和主要属性包括：
 
 | 属性       | 值                     |
 | -------- | --------------------- |
@@ -97,7 +99,7 @@ ReactDOM.render(<App />, document.getElementById('root'));
 
 #### 2. render
 
-首次渲染走的是`render`这条路。传入`render`函数的两个参数：call为undefined，children为一开始创建的`<App />`对应的<a name="#AppReactEle">vDOM</a>。
+首次渲染走的是`render`这条路。传入`render`函数的两个参数：call为undefined，children为一开始创建的`<App />`对应的[React Element](#React-Element)。
 
 `render`的代码如下：
 

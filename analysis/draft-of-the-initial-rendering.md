@@ -93,13 +93,15 @@ ReactDOM.render(<App />, document.getElementById('root'));
     }
     ```
 
+    也就是说`div#root`增加了一个`_reactRootContainer`属性，属性值是一个`ReactRoot`对象。
+
 总结一下，这一阶段创建的主要节点对象及其关系如下图所示：
 
 ![createInitialObj](./images/createInitialObj.png)
 
 #### 2. render
 
-首次渲染走的是`render`这条路。传入`render`函数的两个参数：call为undefined，children为一开始创建的`<App />`对应的[React Element](#App-vDOM)。
+首次渲染走的是`render`这条路。传入`render`函数的两个参数：call为undefined，children为一开始创建的`<App />`对应的[React Element](#user-content-App-vDOM)。
 
 `render`的代码如下：
 
@@ -108,8 +110,8 @@ ReactDOM.render(<App />, document.getElementById('root'));
   children: ReactNodeList,
   callback: ?() => mixed,
   ): Work {
-  const root = this._internalRoot;
-  const work = new ReactWork();//................................................创建work
+  const root = this._internalRoot;//..........root的值为FiberRoot对象
+  const work = new ReactWork();//...........................创建work
   callback = callback === undefined ? null : callback;
   if (__DEV__) {
     warnOnInvalidCallback(callback, 'render');
@@ -121,6 +123,8 @@ ReactDOM.render(<App />, document.getElementById('root'));
   return work;
   };
   ```
+
+  从此处的函数调用可以参考[这里](./functions.md)的记录。
 
 `render`中主要执行两个部分：
 

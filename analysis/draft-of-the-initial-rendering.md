@@ -1,12 +1,14 @@
-本文是首次渲染流程的记录草稿，主要记录了渲染过程经历的函数调用以及函数完成的任务。
+本文是首次渲染流程的记录草稿，主要记录了渲染过程经历的函数调用，主要函数完成的任务以及涉及的对象的变化过程。
 
-### 入口
+---
+
+## 入口
 
 ```js
 ReactDOM.render(<App />, document.getElementById('root'));
 ```
 ---
-### 创建React Element
+## 创建React Element
 
 从调用栈中的执行情况，可以看到首先会处理`<App />`这部分，结果就是将`<App />`转化成一个普通的js对象，也就是<span id="App-vDOM">**React Element**</span>。
 
@@ -26,21 +28,23 @@ ReactDOM.render(<App />, document.getElementById('root'));
 
 
 ---
-### 之后会执行`ReactDOM.render()`这部分
+## 准备阶段
+
+  执行`ReactDOM.render()`
 
   `legacyRenderSubtreeIntoContainer()`，这个函数位于`/packages/react-dom/src/client/ReactDOM.js`。
 
-  这个函数可以分为三部分，执行三个重要的过程：
+  **这个阶段完成了两个重要的准备过程：**
 
-  1. 创建root
-  2. render或renderSubtreeIntoContainer
-  3. DOMRenderer.getPublicRootInstance
+  1. **初始化基本节点对象，包括`ReactRoot实例对象`，`FiberRoot对象`以及`fiber实例对象`**
 
-#### 1. 创建root
+  2. **初始化`fiber实例对象(HostRoot)`的UpdateQueue**
+
+### 1. 初始化基本节点对象
 
 具体过程都封装在`legacyCreateRootFromDOMContainer`这个函数(位于`packages/react-dom/src/client/ReactDOM.js`)中。
 
-这个函数创建了三个对象，并加工了容器。
+这个函数创建了三个对象(这三个对象都和`div#root`有关)，并加工了容器。
 
 1. 创建了`ReactRoot`实例对象
 
@@ -99,7 +103,8 @@ ReactDOM.render(<App />, document.getElementById('root'));
 
 ![createInitialObj](./images/createInitialObj.png)
 
-#### 2. render
+
+### 2. 初始化`fiber实例对象(HostRoot)`的UpdateQueue
 
 首次渲染走的是`render`这条路。传入`render`函数的两个参数：call为undefined，children为一开始创建的`<App />`对应的[React Element](#user-content-App-vDOM)。
 
@@ -124,125 +129,213 @@ ReactDOM.render(<App />, document.getElementById('root'));
   };
   ```
 
-  从此处的函数调用可以参考[这里](./functions.md)的记录。
-
-`render`中主要执行两个部分：
-
-  1. 创建一个`work`
-
   `ReactWork.prototype`上定义了两个方法：
 
   - `then`：用来将回调函数推入保存集合
 
   - `_onCommit`：用来执行上面的保存集合的所有回调函数
 
-  2. 更新容器
 
-  注意`DOMRenderer.updateContainer`中传入的参数
+  从此处的函数调用可以参考[这里](./functions.md)的记录。
 
-  说实话，不觉得这个函数起名叫`updateContainer`是准确的。`updateContainer`函数完成了创建优先级的任务，并将`优先级`和`fiber`一同传入`updateContainerAtExpirationTime`。
+  **初始化UpdateQueue的函数调用：updateContainer -> updateContainerAtExpirationTime -> scheduleRootUpdate**
 
+  - `DOMRenderer.updateContainer`(加工函数)中传入的*主要*参数包括：
 
-  - `updateContainerAtExpirationTime`函数
+    - children：上面第一步创建的React Element
 
-  获取了`container.context`属性，然后继续调用`scheduleRootUpdate`函数
+    - root：上面创建的FiberRoot对象
 
-  - `scheduleRootUpdate`函数(/packages/react-reconciler/src/ReactFiberReconciler.js)
+  - `updateContainerAtExpirationTime`(加工函数)
 
-  创建了`update`对象，之后先调用`enqueueUpdate`函数，再调用`scheduleWork`函数。
+    获取了`container.context`属性，然后继续调用`scheduleRootUpdate`函数
 
-  `update`对象
+  - `scheduleRootUpdate`(实际创建update和UpdateQueue的函数)(/packages/react-reconciler/src/ReactFiberReconciler.js)
 
-    在调度算法执行过程中，会将需要进行变更的工作以一个Update对象来表示。同一个updateQueue对列中的update对象会通过next属性串联起来，形成一个单链表。
+    传入这个函数的参数包括：
 
-  `update`对象得重要属性：
+    - current$$1：FiberRoot.current，也就是fiber对象(tag = 5 表示根节点)
 
-    - tag：Number类型。当前有0~3，分别是UpdateState、ReplaceState、ForceUpdate、CaptureUpdate。
-        1. UpdateState：如果payload是普通对象，则把它当做新state。如果payload是函数，则把执行函数得到得返回值作为新state。如果新state不为空，则与原来得State进行和并，返回一个新对象。**`setState`设置state得和并是在此处处理得？**
-        2. ReplaceState：直接返回这里的payload。如果payload是函数，则使用它得返回值作为新的state。
-        3. ForceUpdate：仅仅设置`hasForceUpdate`为`true`，返回原始得state。
-        4. CaptureUpdate：仅仅是将`workInProgress.effectTag`设置为清空`shouldCapture`标记位，增加`didCapture`标记位。
-    - payload：Function|Object类型。表示这个更新对应的**数据内容**。
-    - callback：Function类型。表示更新后得回调函数，如果这个回调有值，就会在UpdateQueue得副作用链表中挂载当前update对象。
-    - next：update对象类型。updateQueue中得update对象之间通过next来串联，表示下一个update对象。
+    - element：React Element对象(虚拟节点对象)
 
-  [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)中有说到`update.payload`中保存的是jsx组件的`ReactElement`，之前没注意，这里补充一下。
+    创建了`update`对象，之后先调用`enqueueUpdate`函数，再调用`scheduleWork`函数。
+
+    - `update`对象
+
+      在调度算法执行过程中，会将需要进行变更的工作以一个Update对象来表示。同一个updateQueue对列中的update对象会通过next属性串联起来，形成一个单链表。
+
+    - `update`对象的重要属性：
+
+      - tag：Number类型。当前有0~3，分别是UpdateState、ReplaceState、ForceUpdate、CaptureUpdate。
+          1. UpdateState：如果payload是普通对象，则把它当做新state。如果payload是函数，则把执行函数得到的返回值作为新state。如果新state不为空，则与原来得State进行合并，返回一个新对象。
+          2. ReplaceState：直接返回这里的payload。如果payload是函数，则使用它得返回值作为新的state。
+          3. ForceUpdate：仅仅设置`hasForceUpdate`为`true`，返回原始得state。
+          4. CaptureUpdate：仅仅是将`workInProgress.effectTag`设置为清空`shouldCapture`标记位，增加`didCapture`标记位。
+      - payload：Function|Object类型。表示这个更新对应的**数据内容**。
+      - callback：Function类型。表示更新后得回调函数，如果这个回调有值，就会在UpdateQueue得副作用链表中挂载当前update对象。
+      - next：update对象类型。updateQueue中得update对象之间通过next来串联，表示下一个update对象。
+
+  此处创建得到的**update对象**的主要属性如下：
+
+  | 属性       | 值                        |
+  | -------- | ------------------------ |
+  | tag      | 0，表示UpdateState          |
+  | payload  | {element: React Element} |
+  | callback | 有值，暂且不管              |
+  | next     | null                         |
+
+  [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)中有说到`update.payload`中保存的是jsx组件的`ReactElement`，之前没注意，这里补充一下。这就表示`<App />`的虚拟节点对象(React Element)就是这个更新的数据内容。
 
   - `createUpdateQueue`函数
 
-  这个函数源码如下：
+    这个函数源码如下：
 
-  ```js
-    function createUpdateQueue<State>(baseState: State): UpdateQueue<State> {
-      const queue: UpdateQueue<State> = {
-        baseState,
-        firstUpdate: null,
-        lastUpdate: null,
-        firstCapturedUpdate: null,
-        lastCapturedUpdate: null,
-        firstEffect: null,
-        lastEffect: null,
-        firstCapturedEffect: null,
-        lastCapturedEffect: null,
-      };
-      return queue;
-    }
-  ```
-  `updateQueue`是个对象，有如下属性：
+    ```js
+      function createUpdateQueue<State>(baseState: State): UpdateQueue<State> {
+        const queue: UpdateQueue<State> = {
+          baseState,
+          firstUpdate: null,
+          lastUpdate: null,
+          firstCapturedUpdate: null,
+          lastCapturedUpdate: null,
+          firstEffect: null,
+          lastEffect: null,
+          firstCapturedEffect: null,
+          lastCapturedEffect: null,
+        };
+        return queue;
+      }
+    ```
+    `updateQueue`是个对象，有如下属性：
 
-      - baseState：普通对象。表示更新前的基础状态。
-      - firstUpdate：Update对象。第一个Update对象的引用，总体是一条单链表。
-      - lastUpdate：Update对象。最后一个Update对象的引用。
-      - firstEffect：Update对象。第一个包含副作用(Callback)的Update对象得引用。
-      - lastEffect：Update对象。最后一个包含副作用(Callback)的Update对象得引用。
+    - baseState：普通对象。表示更新前的基础状态。
+    - firstUpdate：Update对象。第一个Update对象的引用，总体是一条单链表。
+    - lastUpdate：Update对象。最后一个Update对象的引用。
+    - firstEffect：Update对象。第一个包含副作用(Callback)的Update对象得引用。
+    - lastEffect：Update对象。最后一个包含副作用(Callback)的Update对象得引用。
 
-  ![updateQueue结构](./images/updateQueue.png)
+      ![updateQueue结构](./images/updateQueue结构.png)
 
   - `enqueueUpdate`函数
 
-  这个函数主要使用来将`update`对象插入到更新队列。queue使用了链表的结构。
+    这个函数完成了两个任务：
+
+    1. 创建了一个UpdateQueue对象赋给fiber.UpdateQueue
+
+    2. 将上面创建的update对象绑定到UpdateQueue上
+
+    ![payload和fiber的关系](./images/updateQueue_payload.png)
+
+  
+  后面执行`scheduleWork`函数。
+
+===================
+
+**小结**
+
+至此就完成了创建update，UpdateQueue以及将二者绑定的工作。
+
+```js
+ReactDOM.render(<App />, document.getElementById('root'));
+```
+
+再来看上面这行入口代码，`<App />`对应的React Element成为了update的payload，而这个update又被插入了`document.getElementById('root')`对应的fiber对象的`fiber.UpdateQueue`中，感觉React工作的方式初现雏形。
+
+===================
+
+---
+## 任务协调
+
+[这篇文章](https://juejin.im/post/5b7016606fb9a0099406f8de)把这一阶段称作任务协调部分。
+
+[这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)没有把这部分拿出来单独讲解，只是说这部分完成的主要任务是提取当前应该进行初始化的 (HostFiber)FiberNode。
+
+个人觉得叫任务协调没有什么不妥，因为这里会区分是同步执行任务还是异步执行任务。
 
   - `scheduleWork`函数
 
-  在首次渲染阶段，`scheduleWorkToRoot`做了2项工作：
+    在首次渲染阶段，`scheduleWorkToRoot`做了2项工作：
 
-  1. 给`fiber.expirationTime`设置了过期时间1(更新了fiber实例的过期时间)
-  2. 返回了`fiber.stateNode`，这个对象指向`createFiberRoot`函数创建的那个对象
+    1. 给`fiber.expirationTime`设置了过期时间，1(更新了fiber实例的过期时间)
+
+    2. 返回了`fiber.stateNode`，这个对象指向`createFiberRoot`函数创建的那个对象
+
+    这个函数内部的`root`变量指的是FiberRoot对象。
 
   - `requestWork`函数
 
-  这个函数判断是应该同步执行work还是异步执行work
+    传入这个函数的参数中的：
+
+    - root：指的就是上面的fiberRoot对象
+
+    这个函数判断是应该同步执行work还是异步执行work。
 
   - `performWork`函数
 
+    首次渲染直接跳到这个函数：`performWorkOnRoot`
+
+  - `performWorkOnRoot`函数
+
+    首次渲染会执行`renderRoot`。
+
+===================
+
+**小结**
+
+至此，任务协调阶段完成。
+
+首次渲染时，这部分好像没有做什么重要的工作。
+
+===================
+
+---
+
+## 调度算法执行阶段
+
+[这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)把这一阶段成为调度算法的执行阶段。
+
+**完成的任务是：遍历所有的Fiber节点，通过Diff算法计算所有更新工作，产出 EffectList。**
+
+  - `renderRoot`函数
+
+    这个函数主要做了两件事：
+
+    1. 创建`workInProgress`对象，为下面第二步做准备
+
+    2. 执行大循环,遍历完Fiber树之后，通过Diff算法，可以产出 EffectList
+
   - `createWorkInProgress`函数(packages/react-reconciler/src/ReactFiber.js)
 
-  `workInProgress`：workInProgress tree是reconcile过程中从fiber tree建立的当前进度快照，用于断点恢复。以fiber tree为蓝本，把每个fiber作为一个工作单元，自顶向下逐节点构造workInProgress tree。workInprogress本质是一个fiber对象。
+    `workInProgress`：workInProgress tree是reconcile过程中从fiber tree建立的当前进度快照，用于断点恢复。以fiber tree为蓝本，把每个fiber作为一个工作单元，自顶向下逐节点构造workInProgress tree。workInprogress本质是一个fiber对象。
 
-  这个函数实际就是利用`current`中保存的fiber对象，创建了一个几乎一模一样的fiber对象。
+    这个函数实际就是利用`current`中保存的fiber对象，创建了一个几乎一模一样的fiber对象。
 
   - `workLoop`函数
 
-  这个函数就是[这篇文章](https://juejin.im/post/5b7016606fb9a0099406f8de)中所说的`大循环`。
+    这个函数就是[这篇文章](https://juejin.im/post/5b7016606fb9a0099406f8de)中所说的`大循环`。
 
-  workLoop函数的源码如下：
+    workLoop函数的源码如下：
 
-  ```js
-  function workLoop(isYieldy) {
-    if (!isYieldy) {
-      // Flush work without yielding
-      while (nextUnitOfWork !== null) {
-        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
-      }
-    } else {
-      // Flush asynchronous work until the deadline runs out of time.
-      while (nextUnitOfWork !== null && !shouldYield()) {
-        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    ```js
+    function workLoop(isYieldy) {
+      if (!isYieldy) {
+        // Flush work without yielding
+        while (nextUnitOfWork !== null) {
+          nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+        }
+      } else {
+        // Flush asynchronous work until the deadline runs out of time.
+        while (nextUnitOfWork !== null && !shouldYield()) {
+          nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+        }
       }
     }
-  }
-  ```
-  [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)说到，workLoop中的这行代码`nextUnitOfWork = performUnitOfWork(nextUnitOfWork);`是个典型的递归转循环的写法。这样写成循环，一个是避免调用栈不断堆叠以及调用栈溢出的问题;而是结合其他Scheduler代码的辅助变量，可以实现遍历随时终止，随时恢复的效果。
+    ```
+    [这篇文章](https://www.cnblogs.com/lcllao/p/9642376.html)说到，workLoop中的这行代码`nextUnitOfWork = performUnitOfWork(nextUnitOfWork);`是个典型的递归转循环的写法。这样写成循环有两个好处：
+    
+    1. 避免调用栈不断堆叠以及调用栈溢出的问题
+    
+    2. 结合其他Scheduler代码的辅助变量，可以实现遍历随时终止，随时恢复的效果。
 
   - `performUnitOfWork`函数
 

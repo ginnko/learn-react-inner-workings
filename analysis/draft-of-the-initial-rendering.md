@@ -80,8 +80,31 @@ ReactDOM.render(<App />, document.getElementById('root'));
     | 属性        | 值   |
     | --------- | --- |
     | tag       | 5，根节点对象   |
-    | stateNode | FiberRoot对象    |
+    | stateNode | FiberRonull    |
 
+手敲一遍fiber对象，以示熟悉
+
+| 键             | 值                                           | 描述                                                                          |
+| ------------- | ------------------------------------------- | --------------------------------------------------------------------------- |
+| 实例相关          |                                             |                                                                             |
+| tag           | Number                                      | FiberNode的类型。当前使用的Demo可以看到ClassComponent，HostRoot，HostComponent，HostText    |
+| type          | Function，String，Symbol，Number，Object        | 和ReactElement表现一致                                                           |
+| stateNode     | FiberRoot，DomElement，ReactComponentInstance | FiberNode会通过stateNode绑定一些其他的对象，例如FiberNode对应的Dom，FiberRoot，ReactComponent实例 |
+| Fiber遍历流程相关   |                                             |                                                                             |
+| return        | FiberNode，null                              | 表示父级FiberNode                                                               |
+| child         | FiberNode，null                              | 表示第一个子FiberNode                                                             |
+| sibling       | FiberNode，null                              | 表示紧紧相邻的下一个兄弟FiberNode                                                       |
+| alternate     | FiberNode，null                              | Fiber调度算法采取了双缓冲算法，FiberRoot底下的所有节点，都会在算法过程中，尝试创建自己的“镜像”            |
+| 数据相关          |                                             |                                                                             |
+| pendingProps  | Object                                      | 表示新的props                                                                   |
+| memoizedProps | Object                                      | 表示经过所有流程处理后的新props                                                          |
+| memoizedState | Object                                      | 表示经过所有流程处理后的新state                                                          |
+| 副作用描述相关       |                                             |                                                                             |
+| updateQueue   | UpdateQueue                                 | 更新队列，队列内放着即将要发生的变更状态                                                        |
+| effectTag     | Number                                      | 可以理解为通过一个字段标识n个动作，如Placement、Update、Deletion、Callback  &=                   |
+| firstEffect   | FiberNode，null                              | 与副作用操作遍历流程相关，当前节点下，第一个需要处理的副作用FiberNode的引用                             |
+| nextEffect    | FiberNode，null                              | 表示下一个将要处理的副作用FiberNode的引用                                                   |
+| lastEffect    | FiberNode，null                              | 表示最后一个将要处理的副作用FiberNode的引用                                                    |
 4. 创建`container`
 
     经过`legacyCreateRootFromDOMContainer`后，`container`增加了下面的东西：
